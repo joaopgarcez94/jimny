@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Jimny Commander v2.0</title>
+    <title>Jimny Commander v2.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Roboto+Condensed:ital,wght@1,700&display=swap');
@@ -20,7 +20,8 @@
             font-family: 'Orbitron', sans-serif;
             touch-action: manipulation;
             user-select: none;
-            -webkit-tap-highlight-color: transparent;
+            overflow: hidden; /* Evita rolagem chata */
+            height: 100dvh; /* Altura dinâmica para telemóvel */
         }
 
         .fonte-fueltech {
@@ -29,20 +30,18 @@
             text-transform: uppercase;
         }
 
-        /* Barra de RPM Dinâmica */
         .container-barra-rpm {
-            height: 80px;
+            height: 50px; /* Reduzi um pouco */
             background: #111;
             clip-path: polygon(0% 0%, 100% 0%, 97% 100%, 0% 100%);
             position: relative;
-            overflow: hidden;
-            border-bottom: 4px solid #222;
+            border-bottom: 3px solid #222;
         }
 
         .preenchimento-rpm {
             height: 100%;
             width: 0%;
-            transition: width 0.1s linear, background 0.2s;
+            transition: width 0.1s linear;
             background: linear-gradient(90deg, var(--ft-yellow) 0%, var(--ft-orange) 70%, var(--ft-red) 95%);
         }
 
@@ -52,144 +51,121 @@
         }
 
         @keyframes flash {
-            0% { opacity: 1; }
+            0%, 100% { opacity: 1; }
             50% { opacity: 0.2; }
-            100% { opacity: 1; }
         }
 
         .painel-vidro {
-            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 100%);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            box-shadow: 0 8px 32px 0 rgba(0,0,0,0.8);
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
         }
 
         .botao-tração {
-            border: 2px solid #333;
-            color: #444;
-            padding: 4px 12px;
-            border-radius: 6px;
-            font-size: 12px;
+            border: 1px solid #333;
+            color: #555;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
             font-weight: 900;
-            transition: all 0.3s;
         }
 
         .tração-ativa {
             border-color: #22c55e;
             color: #22c55e;
             background: rgba(34, 197, 94, 0.1);
-            box-shadow: 0 0 10px rgba(34, 197, 94, 0.3);
         }
 
-        /* Estilo para números grandes */
         .numero-gigante {
-            font-size: 140px;
+            font-size: clamp(80px, 25vh, 120px); /* Ajusta conforme a tela */
             line-height: 0.8;
-            letter-spacing: -5px;
         }
     </style>
 </head>
-<body class="p-4 h-screen flex flex-col overflow-hidden">
+<body class="p-3 flex flex-col">
 
-    <!-- Topo: Status e Logo -->
-    <div class="flex justify-between items-center mb-4">
-        <div class="flex items-center gap-3">
-            <div id="led-status" class="w-3 h-3 rounded-full bg-red-900 transition-all duration-500"></div>
-            <div class="flex flex-col">
-                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Estado da ECU</span>
-                <span id="txt-status" class="text-[10px] text-gray-300 font-bold uppercase">Aguardando Conexão</span>
-            </div>
+    <!-- Topo -->
+    <div class="flex justify-between items-center mb-2">
+        <div class="flex items-center gap-2">
+            <div id="led-status" class="w-2 h-2 rounded-full bg-red-900"></div>
+            <span id="txt-status" class="text-[8px] text-gray-500 font-bold uppercase tracking-widest leading-none">Aguardando OBDII</span>
         </div>
-        <div class="text-right">
-            <h1 class="fonte-fueltech text-2xl italic tracking-tighter">
-                JIMNY <span class="text-red-600 font-black">COMMANDER</span>
-            </h1>
-            <span class="text-[9px] text-gray-600 font-bold uppercase tracking-[0.3em]">Suzuki Special Edition</span>
-        </div>
+        <h1 class="fonte-fueltech text-lg italic text-gray-400">JIMNY <span class="text-red-600 font-black">COMMANDER</span></h1>
     </div>
 
-    <!-- Seção de RPM -->
-    <div class="mb-6">
-        <div class="flex justify-between items-end mb-2 px-1">
-            <div class="flex flex-col">
-                <div class="flex items-baseline gap-2">
-                    <span id="valor-rpm" class="text-7xl font-black italic tracking-tighter">0</span>
-                    <span class="text-sm text-gray-500 font-bold">RPM</span>
-                </div>
+    <!-- RPM -->
+    <div class="mb-3">
+        <div class="flex justify-between items-end mb-1 px-1">
+            <div class="flex items-baseline gap-1">
+                <span id="valor-rpm" class="text-5xl font-black italic tracking-tighter">0</span>
+                <span class="text-[10px] text-gray-600 font-bold uppercase">RPM</span>
             </div>
-            <!-- Seletor de Tração -->
-            <div class="flex gap-2 pb-2">
+            <div class="flex gap-1">
                 <div id="tag-2h" class="botao-tração tração-ativa">2H</div>
                 <div id="tag-4h" class="botao-tração">4H</div>
                 <div id="tag-4l" class="botao-tração">4L</div>
             </div>
         </div>
-        <div class="container-barra-rpm rounded-lg">
+        <div class="container-barra-rpm">
             <div id="barra-rpm" class="preenchimento-rpm"></div>
-        </div>
-        <div class="flex justify-between px-2 text-[10px] text-gray-700 font-bold mt-1 uppercase">
-            <span>0</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>
         </div>
     </div>
 
     <!-- Painel de Dados -->
-    <div class="grid grid-cols-12 gap-4 flex-grow items-stretch">
+    <div class="grid grid-cols-12 gap-2 flex-grow overflow-hidden mb-3">
         
-        <!-- Marcha (Calculada) -->
-        <div class="col-span-8 painel-vidro flex flex-col items-center justify-center relative">
-            <span class="absolute top-4 text-xs text-gray-600 font-bold uppercase tracking-widest">Marcha</span>
-            <div id="valor-marcha" class="numero-gigante font-black italic text-white transition-all duration-200">N</div>
-            <div class="flex items-baseline gap-2 mt-4">
-                <span id="valor-vel" class="text-5xl font-bold italic">0</span>
-                <span class="text-xl text-gray-500 font-bold italic">KM/H</span>
+        <!-- Marcha -->
+        <div class="col-span-7 painel-vidro flex flex-col items-center justify-center relative py-4">
+            <span class="absolute top-2 text-[8px] text-gray-600 font-bold uppercase tracking-widest">Marcha</span>
+            <div id="valor-marcha" class="numero-gigante font-black italic text-white">N</div>
+            <div class="flex items-baseline gap-1">
+                <span id="valor-vel" class="text-3xl font-bold italic">0</span>
+                <span class="text-xs text-gray-500 font-bold italic uppercase">km/h</span>
             </div>
         </div>
 
-        <!-- Sensores Laterais -->
-        <div class="col-span-4 flex flex-col gap-4">
-            <div class="painel-vidro p-4 flex flex-col justify-center flex-grow border-l-4 border-cyan-500">
-                <span class="text-[10px] text-gray-500 font-bold uppercase mb-1">Arrefecimento</span>
+        <!-- Sensores -->
+        <div class="col-span-5 flex flex-col gap-2">
+            <div class="painel-vidro p-2 flex flex-col justify-center flex-grow border-l-2 border-cyan-500">
+                <span class="text-[8px] text-gray-500 font-bold uppercase">Água</span>
                 <div class="flex items-baseline gap-1">
-                    <span id="valor-temp" class="text-4xl font-black text-cyan-400">--</span>
-                    <span class="text-xs text-cyan-800 font-bold">°C</span>
+                    <span id="valor-temp" class="text-2xl font-black text-cyan-400">--</span>
+                    <span class="text-[10px] text-cyan-800 font-bold">°C</span>
                 </div>
             </div>
 
-            <div class="painel-vidro p-4 flex flex-col justify-center flex-grow border-l-4 border-yellow-500">
-                <span class="text-[10px] text-gray-500 font-bold uppercase mb-1">Bateria</span>
+            <div class="painel-vidro p-2 flex flex-col justify-center flex-grow border-l-2 border-yellow-500">
+                <span class="text-[8px] text-gray-500 font-bold uppercase">Bateria</span>
                 <div class="flex items-baseline gap-1">
-                    <span id="valor-volt" class="text-4xl font-black text-yellow-400">12.8</span>
-                    <span class="text-xs text-yellow-800 font-bold">V</span>
+                    <span id="valor-volt" class="text-2xl font-black text-yellow-400">12.8</span>
+                    <span class="text-[10px] text-yellow-800 font-bold">V</span>
                 </div>
             </div>
 
-            <div class="painel-vidro p-4 flex flex-col justify-center flex-grow border-l-4 border-red-600">
-                <span class="text-[10px] text-gray-500 font-bold uppercase mb-1">Modo Tração</span>
-                <div id="txt-modo" class="text-lg font-black italic uppercase leading-none">Asfalto</div>
+            <div class="painel-vidro p-2 flex flex-col justify-center flex-grow border-l-2 border-red-600">
+                <span id="txt-modo" class="text-[10px] font-black italic uppercase text-white">ASFALTO</span>
             </div>
         </div>
     </div>
 
-    <!-- Botões de Controle Inferiores -->
-    <div class="mt-6 flex gap-4 h-16">
-        <button id="btn-conectar" class="flex-[3] bg-zinc-900 border border-zinc-800 text-white font-black rounded-xl italic tracking-widest active:scale-95 transition-all">
-            CONECTAR OBD2
+    <!-- Botões Inferiores -->
+    <div class="grid grid-cols-3 gap-2 h-12">
+        <button id="btn-conectar" class="col-span-1 bg-zinc-900 border border-zinc-800 text-white font-black rounded-lg text-[10px] uppercase tracking-tighter active:bg-blue-900">
+            Conectar
         </button>
-        <button id="btn-reduzida" class="flex-1 bg-red-950/20 border border-red-900 text-red-600 font-black rounded-xl text-[10px] leading-tight active:scale-95">
-            ALTERNAR<br>REDUZIDA
+        <button id="btn-reduzida" class="col-span-1 bg-red-950/20 border border-red-900 text-red-600 font-black rounded-lg text-[10px] uppercase leading-tight">
+            Reduzida
         </button>
-        <button id="btn-teste" class="flex-1 bg-zinc-900 border border-zinc-800 text-gray-600 font-black rounded-xl text-[10px] active:scale-95">
-            TESTAR
+        <button id="btn-teste" class="col-span-1 bg-zinc-900 border border-zinc-800 text-gray-600 font-black rounded-xl text-[10px] uppercase">
+            Testar
         </button>
     </div>
 
     <script>
-        // --- CONFIGURAÇÕES DO JIMNY (Relações de Marcha) ---
         let simulando = false;
         let emReduzida = false;
         let loopSimulacao;
 
-        // Elementos da Interface
         const elRpm = document.getElementById('valor-rpm');
         const elBarraRpm = document.getElementById('barra-rpm');
         const elMarcha = document.getElementById('valor-marcha');
@@ -199,17 +175,11 @@
         const elStatus = document.getElementById('txt-status');
         const elLed = document.getElementById('led-status');
 
-        // Lógica de cálculo de marcha estimada para Jimny 2012 (Manual)
         function estimarMarcha(rpm, vel) {
             if (vel < 3 || rpm < 600) return "N";
-            
-            // Relação RPM / Velocidade
             let relacao = rpm / vel;
-            
-            // Ajuste se estiver em 4L (Reduzida é ~2.6x mais curta)
             const divisor = emReduzida ? 2.6 : 1.0;
             const r = relacao / divisor;
-
             if (r > 135) return "1";
             if (r > 88)  return "2";
             if (r > 60)  return "3";
@@ -217,54 +187,35 @@
             return "5";
         }
 
-        // Função para atualizar o painel visualmente
         function atualizarPainel(rpm, vel, temp) {
             elRpm.innerText = Math.floor(rpm);
             elVel.innerText = Math.floor(vel);
             elTemp.innerText = temp;
-
-            // Barra de RPM
             const porcRpm = (rpm / 7500) * 100;
             elBarraRpm.style.width = Math.min(porcRpm, 100) + "%";
-
-            // Shift Light (Alerta de troca)
             if (rpm > 6000) elBarraRpm.classList.add('shift-light');
             else elBarraRpm.classList.remove('shift-light');
-
-            // Marcha
             elMarcha.innerText = estimarMarcha(rpm, vel);
         }
 
-        // Controle da Reduzida
         document.getElementById('btn-reduzida').addEventListener('click', () => {
             emReduzida = !emReduzida;
-            const tags = { '2h': document.getElementById('tag-2h'), '4l': document.getElementById('tag-4l') };
-            
-            if (emReduzida) {
-                tags['2h'].classList.remove('tração-ativa');
-                tags['4l'].classList.add('tração-ativa');
-                elModo.innerText = "Trilha (4L)";
-                elModo.style.color = "#ef4444";
-            } else {
-                tags['4l'].classList.remove('tração-ativa');
-                tags['2h'].classList.add('tração-ativa');
-                elModo.innerText = "Asfalto";
-                elModo.style.color = "#fff";
-            }
+            document.getElementById('tag-2h').classList.toggle('tração-ativa', !emReduzida);
+            document.getElementById('tag-4l').classList.toggle('tração-ativa', emReduzida);
+            elModo.innerText = emReduzida ? "TRILHA (4L)" : "ASFALTO";
+            elModo.style.color = emReduzida ? "#ef4444" : "#fff";
         });
 
-        // Modo de Teste/Simulação
         document.getElementById('btn-teste').addEventListener('click', () => {
             if (simulando) {
                 clearInterval(loopSimulacao);
                 simulando = false;
-                elStatus.innerText = "Aguardando Conexão";
-                elLed.classList.replace('bg-green-500', 'bg-red-900');
+                elStatus.innerText = "Aguardando OBDII";
+                elLed.className = "w-2 h-2 rounded-full bg-red-900";
             } else {
                 simulando = true;
-                elStatus.innerText = "Modo Simulação Ativo";
-                elLed.classList.replace('bg-red-900', 'bg-green-500');
-                
+                elStatus.innerText = "MODO TESTE ATIVO";
+                elLed.className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]";
                 let t = 0;
                 loopSimulacao = setInterval(() => {
                     t += 0.05;
@@ -275,32 +226,20 @@
             }
         });
 
-        // Conexão via Web Bluetooth
         document.getElementById('btn-conectar').addEventListener('click', async () => {
             try {
-                elStatus.innerText = "Buscando Bluetooth...";
-                
-                // Nota: O Web Bluetooth requer HTTPS. 
-                // A maioria dos ELM327 são Bluetooth Classic (SPP), 
-                // se o seu for Bluetooth LE (BLE), ele aparecerá aqui.
                 const device = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'OBD' }, { namePrefix: 'ELM' }],
                     optionalServices: ['00001101-0000-1000-8000-00805f9b34fb'] 
                 });
-
                 elStatus.innerText = "Conectando...";
-                const server = await device.gatt.connect();
-                
-                elLed.classList.replace('bg-red-900', 'bg-green-500');
-                elStatus.innerText = "Jimny Conectado!";
-                
+                await device.gatt.connect();
+                elLed.className = "w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_#22c55e]";
+                elStatus.innerText = "CONECTADO!";
             } catch (err) {
-                console.log(err);
-                elStatus.innerText = "Erro: " + err.message;
-                alert("Para usar o Bluetooth no navegador, você precisa estar em um site HTTPS (como o GitHub Pages).");
+                alert("Erro: " + err.message);
             }
         });
-
     </script>
 </body>
 </html>
